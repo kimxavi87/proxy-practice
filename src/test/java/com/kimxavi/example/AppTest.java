@@ -1,10 +1,14 @@
 package com.kimxavi.example;
 
+import static net.bytebuddy.matcher.ElementMatchers.named;
 import static org.junit.Assert.assertTrue;
 
 import com.kimxavi.example.proxy.Subject;
+import com.kimxavi.example.proxy.SubjectJustClass;
 import com.kimxavi.example.proxy.SubjectProxy;
 import com.kimxavi.example.proxy.SubjectService;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.implementation.InvocationHandlerAdapter;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
@@ -12,6 +16,7 @@ import org.junit.Test;
 import sun.tools.jconsole.inspector.XObject;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
@@ -59,5 +64,23 @@ public class AppTest
         });
 
         subject.job();
+    }
+
+    @Test
+    public void byteBuddyProxy() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+        Class<? extends SubjectJustClass> job = new ByteBuddy().subclass(SubjectJustClass.class)
+                .method(named("job")).intercept(InvocationHandlerAdapter.of(new InvocationHandler() {
+                    SubjectJustClass subjectJustClass = new SubjectJustClass();
+                    @Override
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                        System.out.println("bytebuddy proxy before job");
+                        Object invoke = method.invoke(subjectJustClass, args);
+                        System.out.println("bytebuddy proxy after job");
+                        return invoke;
+                    }
+                })).make().load(SubjectJustClass.class.getClassLoader()).getLoaded();
+
+        SubjectJustClass subjectJustClass = job.getDeclaredConstructor().newInstance();
+        subjectJustClass.job();
     }
 }
